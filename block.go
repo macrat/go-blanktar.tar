@@ -3,18 +3,18 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
-    "strings"
-    "path"
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path"
+	"strings"
 	"time"
-    "errors"
 )
 
 var (
-    PropertyOverflow = errors.New("property overflow")
-    NameTooLong = errors.New("file name is too long")
+	PropertyOverflow = errors.New("property overflow")
+	NameTooLong      = errors.New("file name is too long")
 )
 
 func toHumanReadable(i uint64) string {
@@ -35,10 +35,10 @@ type String155 [155]byte
 func NewString155(s string) (String155, error) {
 	var r String155
 
-    b := []byte(s)
-    if len(b) - 1 >= 155 {
-        return r, PropertyOverflow
-    }
+	b := []byte(s)
+	if len(b)-1 >= 155 {
+		return r, PropertyOverflow
+	}
 
 	copy(r[:], b)
 	return r, nil
@@ -53,10 +53,10 @@ type String100 [100]byte
 func NewString100(s string) (String100, error) {
 	var r String100
 
-    b := []byte(s)
-    if len(b) - 1 >= 100 {
-        return r, PropertyOverflow
-    }
+	b := []byte(s)
+	if len(b)-1 >= 100 {
+		return r, PropertyOverflow
+	}
 
 	copy(r[:], b)
 	return r, nil
@@ -71,10 +71,10 @@ type String32 [32]byte
 func NewString32(s string) (String32, error) {
 	var r String32
 
-    b := []byte(s)
-    if len(b) - 1 >= 32 {
-        return r, PropertyOverflow
-    }
+	b := []byte(s)
+	if len(b)-1 >= 32 {
+		return r, PropertyOverflow
+	}
 
 	copy(r[:], b)
 	return r, nil
@@ -89,10 +89,10 @@ type String8 [8]byte
 func NewString8(s string) (String8, error) {
 	var r String8
 
-    b := []byte(s)
-    if len(b) - 1 >= 8 {
-        return r, PropertyOverflow
-    }
+	b := []byte(s)
+	if len(b)-1 >= 8 {
+		return r, PropertyOverflow
+	}
 
 	copy(r[:], b)
 	return r, nil
@@ -160,14 +160,14 @@ func (s Size) String() string {
 type Timestamp [12]byte
 
 func NewTimestamp(t time.Time) Timestamp {
-    n := t.Unix()
-    if n < 0 {
-        n = 0
-    }
+	n := t.Unix()
+	if n < 0 {
+		n = 0
+	}
 
-    var x Timestamp
-    copy(x[:], []byte(fmt.Sprintf("%011o", n)))
-    return x
+	var x Timestamp
+	copy(x[:], []byte(fmt.Sprintf("%011o", n)))
+	return x
 }
 
 func (t Timestamp) Time() time.Time {
@@ -213,20 +213,20 @@ const (
 )
 
 func NewTypeFlag(mode os.FileMode) TypeFlag {
-    switch {
-    case mode & os.ModeSymlink != 0:
-        return SYMTYPE
-    case mode & os.ModeCharDevice != 0:
-        return CHRTYPE
-    case mode & os.ModeDevice != 0:
-        return BLKTYPE
-    case mode & os.ModeDir != 0:
-        return DIRTYPE
-    case mode & os.ModeNamedPipe != 0:
-        return FIFOTYPE
-    default:
-        return REGTYPE
-    }
+	switch {
+	case mode&os.ModeSymlink != 0:
+		return SYMTYPE
+	case mode&os.ModeCharDevice != 0:
+		return CHRTYPE
+	case mode&os.ModeDevice != 0:
+		return BLKTYPE
+	case mode&os.ModeDir != 0:
+		return DIRTYPE
+	case mode&os.ModeNamedPipe != 0:
+		return FIFOTYPE
+	default:
+		return REGTYPE
+	}
 }
 
 func (t TypeFlag) FileMode() os.FileMode {
@@ -293,8 +293,8 @@ func NewVersion() Version {
 }
 
 type Block interface {
-    IsHeader() bool
-    IsFooter() bool
+	IsHeader() bool
+	IsFooter() bool
 	WriteTo(io.Writer) error
 }
 
@@ -337,51 +337,51 @@ type HeaderBlock struct {
 }
 
 func NewHeaderBlock(info os.FileInfo) (HeaderBlock, error) {
-    name := info.Name()
-    prefix := ""
+	name := info.Name()
+	prefix := ""
 
-    for len([]byte(name)) - 1 >= 100 {
-        xs := strings.SplitN(name, "/", 2)
-        prefix = path.Join(prefix, xs[0])
-        name = xs[1]
-    }
+	for len([]byte(name))-1 >= 100 {
+		xs := strings.SplitN(name, "/", 2)
+		prefix = path.Join(prefix, xs[0])
+		name = xs[1]
+	}
 
-    n, err := NewString100(name)
-    if err != nil {
-        return HeaderBlock{}, NameTooLong
-    }
-    p, err := NewString155(prefix)
-    if err != nil {
-        return HeaderBlock{}, NameTooLong
-    }
+	n, err := NewString100(name)
+	if err != nil {
+		return HeaderBlock{}, NameTooLong
+	}
+	p, err := NewString155(prefix)
+	if err != nil {
+		return HeaderBlock{}, NameTooLong
+	}
 
-    h := HeaderBlock{
+	h := HeaderBlock{
 		Name:     n,
 		Mode:     NewMode(info.Mode()),
-        Modified: NewTimestamp(info.ModTime()),
+		Modified: NewTimestamp(info.ModTime()),
 		TypeFlag: NewTypeFlag(info.Mode()),
 		Magic:    NewMagic(),
 		Version:  NewVersion(),
 		Prefix:   p,
 	}
 
-    h.CheckSum = NewCheckSum(h.CalcSum())
+	h.CheckSum = NewCheckSum(h.CalcSum())
 
-    return h, nil
+	return h, nil
 }
 
 func (h HeaderBlock) IsHeader() bool {
-    return h.calcTotal() > 0
+	return h.calcTotal() > 0
 }
 
 func (h HeaderBlock) IsFooter() bool {
-    return h.calcTotal() == 0
+	return h.calcTotal() == 0
 }
 
 func (h HeaderBlock) ContentBlockNum() uint64 {
 	if h.TypeFlag != REGTYPE && h.TypeFlag != CONTTYPE {
-        return 0
-    }
+		return 0
+	}
 	return (h.Size.Int() + 511) / 512
 }
 
@@ -423,11 +423,11 @@ func (h HeaderBlock) Validate() bool {
 type ContentBlock [512]byte
 
 func (c ContentBlock) IsHeader() bool {
-    return false
+	return false
 }
 
 func (c ContentBlock) IsFooter() bool {
-    return false
+	return false
 }
 
 func (c ContentBlock) WriteTo(w io.Writer) error {
@@ -438,11 +438,11 @@ func (c ContentBlock) WriteTo(w io.Writer) error {
 type FooterBlock [1024]byte
 
 func (f FooterBlock) IsHeader() bool {
-    return false
+	return false
 }
 
 func (f FooterBlock) IsFooter() bool {
-    return true
+	return true
 }
 
 func (f FooterBlock) WriteTo(w io.Writer) error {
@@ -453,22 +453,22 @@ func (f FooterBlock) WriteTo(w io.Writer) error {
 type BlockArray []Block
 
 func (b BlockArray) IsHeader() bool {
-    return false
+	return false
 }
 
 func (b BlockArray) IsFooter() bool {
-    if len(b) == 0 {
-        return false
-    }
+	if len(b) == 0 {
+		return false
+	}
 
-    return b[len(b)-1].IsFooter()
+	return b[len(b)-1].IsFooter()
 }
 
 func (b BlockArray) WriteTo(w io.Writer) error {
-    for _, b := range b {
-        if err := b.WriteTo(w); err != nil {
-            return err
-        }
-    }
-    return nil
+	for _, b := range b {
+		if err := b.WriteTo(w); err != nil {
+			return err
+		}
+	}
+	return nil
 }
