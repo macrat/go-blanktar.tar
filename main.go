@@ -302,27 +302,28 @@ func (t Tar) Open(name string) (http.File, error) {
 			return NewFileView(t, x), nil
 		}
 	}
-	return nil, http.ErrMissingFile
+	return nil, os.ErrNotExist
 }
 
 func main() {
-	/*
-		out, _ := os.Create("out.tar")
+	out, _ := os.Create("www.tar")
+	defer out.Close()
 
-		file, err := NewFile(FileInfo{
-	        Name_: "foobar",
-	        ModTime_: time.Now(),
-	        Mode_: 0644,
-	    })
-	    if err != nil {
-	        panic(err.Error())
-	    }
+	file, err := NewFile(FileInfo{
+		Name_:    "foobar",
+		ModTime_: time.Now(),
+		Mode_:    0644,
+	})
+	if err != nil {
+		panic(err.Error())
+	}
 
-		fmt.Fprintln(file, "hello world!")
-		file.WriteTo(out)
-	*/
+	fmt.Fprintln(file, "hello world!")
+	file.WriteTo(out)
 
 	in, _ := os.Open("www.tar")
+	defer in.Close()
+
 	t, err := Read(in)
 	if err != nil {
 		panic(err.Error())
